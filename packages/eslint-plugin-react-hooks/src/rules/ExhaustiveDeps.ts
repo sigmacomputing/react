@@ -21,7 +21,7 @@ import type {
   VariableDeclarator,
 } from 'estree';
 
-import { getAdditionalEffectHooksFromSettings } from '../shared/Utils';
+import {getAdditionalEffectHooksFromSettings} from '../shared/Utils';
 
 type DeclaredDependency = {
   key: string;
@@ -63,6 +63,10 @@ const rule = {
           enableDangerousAutofixThisMayCauseInfiniteLoops: {
             type: 'boolean',
           },
+          ignoreThisDependency: {
+            type: 'string',
+            enum: ['never', 'props', 'always'],
+          },
           experimental_autoDependenciesHooks: {
             type: 'array',
             items: {
@@ -79,7 +83,6 @@ const rule = {
   create(context: Rule.RuleContext) {
     const rawOptions = context.options && context.options[0];
     const settings = context.settings || {};
-
 
     // Parse the `additionalHooks` regex.
     // Use rule-level additionalHooks if provided, otherwise fall back to settings
@@ -101,11 +104,18 @@ const rule = {
     const requireExplicitEffectDeps: boolean =
       (rawOptions && rawOptions.requireExplicitEffectDeps) || false;
 
+    const ignoreThisDependency =
+      (context.options &&
+        context.options[0] &&
+        context.options[0].ignoreThisDependency) ||
+      'never';
+
     const options = {
       additionalHooks,
       experimental_autoDependenciesHooks,
       enableDangerousAutofixThisMayCauseInfiniteLoops,
       requireExplicitEffectDeps,
+      ignoreThisDependency,
     };
 
     function reportProblem(problem: Rule.ReportDescriptor) {
@@ -523,7 +533,10 @@ const rule = {
           if (referenceNode == null) {
             continue;
           }
-          const dependencyNode = getDependency(referenceNode);
+          const dependencyNode = getDependency(
+            referenceNode,
+            ignoreThisDependency,
+          );
           const dependency = analyzePropertyChain(
             dependencyNode,
             optionalChains,
@@ -1859,7 +1872,7 @@ function scanForConstructions({
  * props.foo.(bar) => (props).foo.bar
  * props.foo.bar.(baz) => (props).foo.bar.baz
  */
-function getDependency(node: Node): Node {
+function getDependency(node: Node, ignoreThisDependency): Node {
   if (
     node.parent &&
     (node.parent.type === 'MemberExpression' ||
@@ -1869,13 +1882,19 @@ function getDependency(node: Node): Node {
     node.parent.property.name !== 'current' &&
     !node.parent.computed &&
     !(
+      ignoreThisDependency !== 'always' &&
+      !(
+        ignoreThisDependency === 'props' &&
+        node.type === 'Identifier' &&
+        node.name === 'props'
+      ) &&
       node.parent.parent != null &&
       (node.parent.parent.type === 'CallExpression' ||
         node.parent.parent.type === 'OptionalCallExpression') &&
       node.parent.parent.callee === node.parent
     )
   ) {
-    return getDependency(node.parent);
+    return getDependency(node.parent, ignoreThisDependency);
   } else if (
     // Note: we don't check OptionalMemberExpression because it can't be LHS.
     node.type === 'MemberExpression' &&
