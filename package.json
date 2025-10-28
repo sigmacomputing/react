@@ -121,6 +121,9 @@
     "testRegex": "/scripts/jest/dont-run-jest-directly\\.js$"
   },
   "scripts": {
+    "sigma-build-publish": "yarn build -r stable eslint-plugin-react-hooks && yarn sigma-modify-built && yarn sigma-publish",
+    "sigma-modify-built": "cd build/oss-stable/eslint-plugin-react-hooks && echo \"`jq '.name=\"@sigmacomputing/eslint-plugin-react-hooks\"' package.json`\" > package.json",
+    "sigma-publish": "npm publish build/oss-stable/eslint-plugin-react-hooks && open https://www.npmjs.com/package/@sigmacomputing/eslint-plugin-react-hooks",
     "prebuild": "./scripts/react-compiler/link-compiler.sh",
     "build": "node ./scripts/rollup/build-all-release-channels.js",
     "build-for-devtools": "cross-env RELEASE_CHANNEL=experimental yarn build react/index,react/jsx,react/compiler-runtime,react-dom/index,react-dom/client,react-dom/unstable_testing,react-dom/test-utils,react-is,react-debug-tools,scheduler,react-test-renderer,react-refresh,react-art --type=NODE",

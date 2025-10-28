@@ -1872,7 +1872,7 @@ function scanForConstructions({
  * props.foo.(bar) => (props).foo.bar
  * props.foo.bar.(baz) => (props).foo.bar.baz
  */
-function getDependency(node: Node, ignoreThisDependency): Node {
+function getDependency(node: Node, ignoreThisDependency: string): Node {
   if (
     node.parent &&
     (node.parent.type === 'MemberExpression' ||
